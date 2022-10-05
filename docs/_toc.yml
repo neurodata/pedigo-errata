@@ -1,12 +1,9 @@
 format: jb-book
 root: abstract
 parts:
-  - caption: Preliminaries
-    chapters:
-    - file: introduction
-  - caption: References
+  - caption: Notebooks
     chapters: 
-    - file: references
+    - file: er_splitting_significance
   - caption: Slides
     chapters:
     - url: https://docs.neurodata.io/pedigo-errata/example.pdf
