@@ -15,6 +15,7 @@ from scipy.stats import chi2_contingency, ks_1samp, uniform
 from sklearn.mixture import GaussianMixture
 from tqdm.notebook import tqdm
 
+
 set_theme()
 rng = np.random.default_rng(8888)
 np.random.seed(99999)
