@@ -1,4 +1,12 @@
 [[package]]
+name = "absl-py"
+version = "1.3.0"
+description = "Abseil Python Common Libraries, see https://github.com/abseil/abseil-py."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "adjustText"
 version = "0.7.3"
 description = "Iteratively adjust text position in matplotlib plots to minimize overlaps"
@@ -351,6 +359,35 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "etils"
+version = "0.8.0"
+description = "Collection of common python utils"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+importlib_resources = {version = "*", optional = true, markers = "extra == \"epath\""}
+typing_extensions = {version = "*", optional = true, markers = "extra == \"epath\""}
+zipp = {version = "*", optional = true, markers = "extra == \"epath\""}
+
+[package.extras]
+all = ["etils[array-types]", "etils[ecolab]", "etils[edc]", "etils[enp]", "etils[epath]", "etils[epy]", "etils[etqdm]", "etils[etree-dm]", "etils[etree-jax]", "etils[etree-tf]", "etils[etree]"]
+array-types = ["etils[enp]"]
+dev = ["chex", "pylint (>=2.6.0)", "pytest", "pytest-subtests", "pytest-xdist", "yapf"]
+ecolab = ["etils[enp]", "etils[epy]", "jupyter", "mediapy", "numpy"]
+edc = ["etils[epy]"]
+enp = ["etils[epy]", "numpy"]
+epath = ["etils[epy]", "importlib_resources", "typing_extensions", "zipp"]
+epy = ["typing_extensions"]
+etqdm = ["absl-py", "etils[epy]", "tqdm"]
+etree = ["etils[array_types]", "etils[enp]", "etils[epy]", "etils[etqdm]"]
+etree-dm = ["dm-tree", "etils[etree]"]
+etree-jax = ["etils[etree]", "jax[cpu]"]
+etree-tf = ["etils[etree]", "tf-nightly"]
+lazy-imports = ["etils[ecolab]"]
+
+[[package]]
 name = "executing"
 version = "1.1.1"
 description = "Get the currently executing AST node of a frame, and other information"
@@ -648,6 +685,21 @@ perf = ["ipython"]
 testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
 
 [[package]]
+name = "importlib-resources"
+version = "5.10.0"
+description = "Read resources from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+zipp = {version = ">=3.1.0", markers = "python_version < \"3.10\""}
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)"]
+testing = ["flake8 (<5)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
+
+[[package]]
 name = "ipykernel"
 version = "6.16.0"
 description = "IPython Kernel for Jupyter"
@@ -732,6 +784,62 @@ widgetsnbextension = ">=3.6.0,<3.7.0"
 
 [package.extras]
 test = ["mock", "pytest (>=3.6.0)", "pytest-cov"]
+
+[[package]]
+name = "jax"
+version = "0.3.23"
+description = "Differentiate, compile, and transform Numpy code."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+absl-py = "*"
+etils = {version = "*", extras = ["epath"]}
+jaxlib = {version = "0.3.22", optional = true, markers = "extra == \"cpu\""}
+numpy = ">=1.20"
+opt_einsum = "*"
+scipy = ">=1.5"
+typing_extensions = "*"
+
+[package.extras]
+australis = ["protobuf (>=3.13,<4)"]
+ci = ["jaxlib (==0.3.22)"]
+cpu = ["jaxlib (==0.3.22)"]
+cuda = ["jaxlib (==0.3.22+cuda11.cudnn82)"]
+cuda11_cudnn805 = ["jaxlib (==0.3.22+cuda11.cudnn805)"]
+cuda11_cudnn82 = ["jaxlib (==0.3.22+cuda11.cudnn82)"]
+minimum-jaxlib = ["jaxlib (==0.3.15)"]
+tpu = ["jaxlib (==0.3.22)", "libtpu-nightly (==0.1.dev20221011)", "requests"]
+
+[[package]]
+name = "jaxlib"
+version = "0.3.22"
+description = "XLA library for JAX"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+absl-py = "*"
+numpy = ">=1.20"
+scipy = ">=1.5"
+
+[[package]]
+name = "jaxopt"
+version = "0.5.5"
+description = "Hardware accelerated, batchable and differentiable optimizers in JAX."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+absl-py = ">=0.7.0"
+jax = ">=0.2.18"
+jaxlib = ">=0.1.69"
+matplotlib = ">=2.0.1"
+numpy = ">=1.18.4"
+scipy = ">=1.0.0"
 
 [[package]]
 name = "jedi"
@@ -1494,6 +1602,21 @@ description = "NumPy is the fundamental package for array computing with Python.
 category = "main"
 optional = false
 python-versions = ">=3.8"
+
+[[package]]
+name = "opt-einsum"
+version = "3.3.0"
+description = "Optimizing numpys einsum function"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+numpy = ">=1.7"
+
+[package.extras]
+docs = ["numpydoc", "sphinx (==1.2.3)", "sphinx-rtd-theme", "sphinxcontrib-napoleon"]
+tests = ["pytest", "pytest-cov", "pytest-pep8"]
 
 [[package]]
 name = "packaging"
@@ -2711,31 +2834,6 @@ graphgym = ["hydra-core", "protobuf (<4.21)", "pytorch-lightning", "yacs"]
 test = ["pytest", "pytest-cov"]
 
 [[package]]
-name = "torch-scatter"
-version = "2.0.9"
-description = "PyTorch Extension Library of Optimized Scatter Operations"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.extras]
-test = ["pytest", "pytest-cov", "pytest-runner"]
-
-[[package]]
-name = "torch-sparse"
-version = "0.6.15"
-description = "PyTorch Extension Library of Optimized Autograd Sparse Matrix Operations"
-category = "main"
-optional = false
-python-versions = ">=3.7"
-
-[package.dependencies]
-scipy = "*"
-
-[package.extras]
-test = ["pytest", "pytest-cov"]
-
-[[package]]
 name = "tornado"
 version = "6.2"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -2943,7 +3041,7 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 name = "zipp"
 version = "3.9.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -2954,9 +3052,13 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "3.9.*"
-content-hash = "0854dafddc8f9ae1847af1e2fcab70d61a1f7455e85e870b3327ca770f77bfaa"
+content-hash = "227a22cc952eb48319a5b06c2e2f456b95712b9f033a9aedeb2055bfe5ac4024"
 
 [metadata.files]
+absl-py = [
+    {file = "absl-py-1.3.0.tar.gz", hash = "sha256:463c38a08d2e4cef6c498b76ba5bd4858e4c6ef51da1a5a1f27139a022e20248"},
+    {file = "absl_py-1.3.0-py3-none-any.whl", hash = "sha256:34995df9bd7a09b3b8749e230408f5a2a2dd7a68a0d33c12a3d0cb15a041a507"},
+]
 adjustText = [
     {file = "adjustText-0.7.3.tar.gz", hash = "sha256:b90e275a95b4d980cbbac7967914b8d66477c09bc346a0b3c9e2125bba664b06"},
 ]
@@ -3255,6 +3357,10 @@ entrypoints = [
     {file = "entrypoints-0.4-py3-none-any.whl", hash = "sha256:f174b5ff827504fd3cd97cc3f8649f3693f51538c7e4bdf3ef002c8429d42f9f"},
     {file = "entrypoints-0.4.tar.gz", hash = "sha256:b706eddaa9218a19ebcd67b56818f05bb27589b1ca9e8d797b74affad4ccacd4"},
 ]
+etils = [
+    {file = "etils-0.8.0-py3-none-any.whl", hash = "sha256:b6299d2a835206b063498e443bd8036edb974058899169677dd6ddb92430bb84"},
+    {file = "etils-0.8.0.tar.gz", hash = "sha256:d1d5af7bd9c784a273c4e1eccfaa8feaca5e0481a08717b5313fa231da22a903"},
+]
 executing = [
     {file = "executing-1.1.1-py2.py3-none-any.whl", hash = "sha256:236ea5f059a38781714a8bfba46a70fad3479c2f552abee3bbafadc57ed111b8"},
     {file = "executing-1.1.1.tar.gz", hash = "sha256:b0d7f8dcc2bac47ce6e39374397e7acecea6fdc380a6d5323e26185d70f38ea8"},
@@ -3483,6 +3589,10 @@ importlib-metadata = [
     {file = "importlib_metadata-5.0.0-py3-none-any.whl", hash = "sha256:ddb0e35065e8938f867ed4928d0ae5bf2a53b7773871bfe6bcc7e4fcdc7dea43"},
     {file = "importlib_metadata-5.0.0.tar.gz", hash = "sha256:da31db32b304314d044d3c12c79bd59e307889b287ad12ff387b3500835fc2ab"},
 ]
+importlib-resources = [
+    {file = "importlib_resources-5.10.0-py3-none-any.whl", hash = "sha256:ee17ec648f85480d523596ce49eae8ead87d5631ae1551f913c0100b5edd3437"},
+    {file = "importlib_resources-5.10.0.tar.gz", hash = "sha256:c01b1b94210d9849f286b86bb51bcea7cd56dde0600d8db721d7b81330711668"},
+]
 ipykernel = [
     {file = "ipykernel-6.16.0-py3-none-any.whl", hash = "sha256:d3d95241cd4dd302fea9d5747b00509b58997356d1f6333c9a074c3eccb78cb3"},
     {file = "ipykernel-6.16.0.tar.gz", hash = "sha256:7fe42c0d58435e971dc15fd42189f20d66bf35f3056bda4f6554271bc1fa3d0d"},
@@ -3498,6 +3608,26 @@ ipython_genutils = [
 ipywidgets = [
     {file = "ipywidgets-7.7.2-py2.py3-none-any.whl", hash = "sha256:3d47a7826cc6e2644d7cb90db26699451f8b42379cf63b761431b63d19984ca2"},
     {file = "ipywidgets-7.7.2.tar.gz", hash = "sha256:449ab8e7872d0f388ee5c5b3666b9d6af5e5618a5749fd62652680be37dff2af"},
+]
+jax = [
+    {file = "jax-0.3.23.tar.gz", hash = "sha256:bff436e15552a82c0ebdef32737043b799e1e10124423c57a6ae6118c3a7b6cd"},
+]
+jaxlib = [
+    {file = "jaxlib-0.3.22-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:6cea1023e4fe62c4d4340f9c0eeeb0c184dcabd7f2cb30a92bdaab742acd5680"},
+    {file = "jaxlib-0.3.22-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:ec8af9e5984191c72a7e86b9e9654117c4301400b6c2ce0a1470e47d5c3ace6d"},
+    {file = "jaxlib-0.3.22-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:c36c28d2393ed4174490dc1f4994506de6dd23801cf0a827d0c07470831c594e"},
+    {file = "jaxlib-0.3.22-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:651522950a8492bacc28e3c5bfc1be213891b3bf2f5488e22513f976cec323ee"},
+    {file = "jaxlib-0.3.22-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:05bacb0f0e379db65b5bc2ae3829adbfa47fb560ee737533f578943feff51529"},
+    {file = "jaxlib-0.3.22-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:5f28d826118da92c6d9ae0765be5969a5419168bda623763ef9145019f2e6d96"},
+    {file = "jaxlib-0.3.22-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:7caf7661f757c6c4abc7ec6b6b44b5d59314a91c610279f31f93dc4545c1dc04"},
+    {file = "jaxlib-0.3.22-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:415a82b095b54246a716f45204c9bd6bf26163ade0ae07733f866b2ecf0ff5ba"},
+    {file = "jaxlib-0.3.22-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:34737fd98fadbe9e0422a8ab302e2981aff23e1700d2a1f148d1271697c23f2b"},
+    {file = "jaxlib-0.3.22-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:a93c9cd0f20daba2bf630f041476552dc21a6ecd529a3482355a74dd7ba33f86"},
+    {file = "jaxlib-0.3.22-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:eecad425ae6a1889ef92bba2b92af1070fcc7fbd2d4c8c7976b8393476ff1629"},
+]
+jaxopt = [
+    {file = "jaxopt-0.5.5-py3-none-any.whl", hash = "sha256:bf0265913f6ee55c7216f12dffeabd38a6f43fd186035a050863d0996b0506fe"},
+    {file = "jaxopt-0.5.5.tar.gz", hash = "sha256:1131fdb8da6d4ee45e7224bc1e3bc84ad60db02cddfce40eda1be9aa9f6ab937"},
 ]
 jedi = [
     {file = "jedi-0.18.1-py2.py3-none-any.whl", hash = "sha256:637c9635fcf47945ceb91cd7f320234a7be540ded6f3e99a50cb6febdfd1ba8d"},
@@ -3970,6 +4100,10 @@ numpy = [
     {file = "numpy-1.23.3-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:91b8d6768a75247026e951dce3b2aac79dc7e78622fc148329135ba189813584"},
     {file = "numpy-1.23.3-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:94c15ca4e52671a59219146ff584488907b1f9b3fc232622b47e2cf832e94fb8"},
     {file = "numpy-1.23.3.tar.gz", hash = "sha256:51bf49c0cd1d52be0a240aa66f3458afc4b95d8993d2d04f0d91fa60c10af6cd"},
+]
+opt-einsum = [
+    {file = "opt_einsum-3.3.0-py3-none-any.whl", hash = "sha256:2455e59e3947d3c275477df7f5205b30635e266fe6dc300e3d9f9646bfcea147"},
+    {file = "opt_einsum-3.3.0.tar.gz", hash = "sha256:59f6475f77bbc37dcf7cd748519c0ec60722e91e63ca114e68821c0c54a46549"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
@@ -4730,12 +4864,6 @@ torch = [
 ]
 torch-geometric = [
     {file = "torch_geometric-2.1.0.post1.tar.gz", hash = "sha256:32347402076ccf60fa50312825178f1e3e5ce5e7b3b3a8b2729ac699da24525d"},
-]
-torch-scatter = [
-    {file = "torch_scatter-2.0.9.tar.gz", hash = "sha256:08f5511d64473badf0a71d156b36dc2b09b9c2f00a7cd373b935b490c477a7f1"},
-]
-torch-sparse = [
-    {file = "torch_sparse-0.6.15.tar.gz", hash = "sha256:3a741ae8a7cc19247a44de549fa4d593c4257b5f741e1eb5110b712a14209dd9"},
 ]
 tornado = [
     {file = "tornado-6.2-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:20f638fd8cc85f3cbae3c732326e96addff0a15e22d80f049e00121651e82e72"},
