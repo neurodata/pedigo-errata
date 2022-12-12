@@ -400,135 +400,137 @@ title="Print to PDF"
 <h1>(Towards) valid partition testing via count splitting<a class="headerlink" href="#towards-valid-partition-testing-via-count-splitting" title="Permalink to this headline">#</a></h1>
 <div class="cell tag_hide-input docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
-<span class="kn">from</span> <span class="nn">graspologic.embed</span> <span class="kn">import</span> <span class="n">AdjacencySpectralEmbed</span>
-<span class="kn">from</span> <span class="nn">graspologic.models</span> <span class="kn">import</span> <span class="n">SBMEstimator</span>
-<span class="kn">from</span> <span class="nn">graspologic.plot</span> <span class="kn">import</span> <span class="n">heatmap</span>
-<span class="kn">from</span> <span class="nn">graspologic.simulations</span> <span class="kn">import</span> <span class="n">er_np</span>
-<span class="kn">from</span> <span class="nn">pkg.plot</span> <span class="kn">import</span> <span class="n">set_theme</span>
-<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">chi2_contingency</span><span class="p">,</span> <span class="n">ks_1samp</span><span class="p">,</span> <span class="n">uniform</span>
-<span class="kn">from</span> <span class="nn">sklearn.mixture</span> <span class="kn">import</span> <span class="n">GaussianMixture</span>
-<span class="kn">from</span> <span class="nn">tqdm.notebook</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from graspologic.embed import AdjacencySpectralEmbed
+from graspologic.models import SBMEstimator
+from graspologic.plot import heatmap
+from graspologic.simulations import er_np
+from pkg.plot import set_theme
+from scipy.stats import chi2_contingency, ks_1samp, uniform
+from sklearn.mixture import GaussianMixture
+from tqdm.notebook import tqdm
 
-<span class="n">set_theme</span><span class="p">()</span>
-<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">8888</span><span class="p">)</span>
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">99999</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">compute_params</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
-    <span class="n">n_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
-    <span class="n">n_possible</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">size</span>
-    <span class="k">return</span> <span class="n">n_edges</span><span class="p">,</span> <span class="n">n_possible</span> <span class="o">-</span> <span class="n">n_edges</span>
+set_theme()
+rng = np.random.default_rng(8888)
+np.random.seed(99999)
 
 
-<span class="k">def</span> <span class="nf">get_subgraphs</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
-    <span class="n">uni_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-    <span class="n">subgraphs</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">uni_labels</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">uni_labels</span><span class="p">:</span>
-            <span class="n">subgraph</span> <span class="o">=</span> <span class="n">graph</span><span class="p">[</span><span class="n">labels</span> <span class="o">==</span> <span class="n">i</span><span class="p">][:,</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">j</span><span class="p">]</span>
-            <span class="n">subgraphs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subgraph</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">subgraphs</span>
+def compute_params(graph):
+    n_edges = np.count_nonzero(graph)
+    n_possible = graph.size
+    return n_edges, n_possible - n_edges
 
 
-<span class="k">def</span> <span class="nf">estimate_partition_gmm</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="n">ase</span> <span class="o">=</span> <span class="n">AdjacencySpectralEmbed</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="n">n_components</span><span class="p">,</span> <span class="n">concat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">X</span> <span class="o">=</span> <span class="n">ase</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-    <span class="n">gmm</span> <span class="o">=</span> <span class="n">GaussianMixture</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="n">n_components</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="n">n_init</span><span class="p">)</span>
-    <span class="n">gmm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-    <span class="n">pred_labels</span> <span class="o">=</span> <span class="n">gmm</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">pred_labels</span>
+def get_subgraphs(graph, labels):
+    uni_labels = np.unique(labels)
+    subgraphs = []
+    for i in uni_labels:
+        for j in uni_labels:
+            subgraph = graph[labels == i][:, labels == j]
+            subgraphs.append(subgraph)
+    return subgraphs
 
 
-<span class="k">def</span> <span class="nf">estimate_partition_spectral_modularity</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
-    <span class="n">A_sym</span> <span class="o">=</span> <span class="p">(</span><span class="n">A</span> <span class="o">+</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-    <span class="n">degrees</span> <span class="o">=</span> <span class="n">A_sym</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">degrees</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>  <span class="c1"># TODO half here?</span>
-    <span class="n">B</span> <span class="o">=</span> <span class="n">A_sym</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">m</span> <span class="o">*</span> <span class="n">degrees</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">degrees</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span>
-    <span class="n">_</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
-    <span class="c1"># eigh returns eigenvectors in ascending order by eigenvalue</span>
-    <span class="n">first_eigenvector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eigenvectors</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
-    <span class="n">eig_partition</span> <span class="o">=</span> <span class="n">first_eigenvector</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">eig_partition</span><span class="p">[</span><span class="n">eig_partition</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">eig_partition</span><span class="p">[</span><span class="n">eig_partition</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">eig_partition</span> <span class="o">=</span> <span class="n">eig_partition</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">eig_partition</span>
+def estimate_partition_gmm(A, n_components=2, n_init=1):
+    ase = AdjacencySpectralEmbed(n_components=n_components, concat=True)
+    X = ase.fit_transform(A)
+    gmm = GaussianMixture(n_components=n_components, n_init=n_init)
+    gmm.fit(X)
+    pred_labels = gmm.predict(X)
+    return pred_labels
 
 
-<span class="k">def</span> <span class="nf">old_count_split</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">rng</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">()</span>
-
-    <span class="n">subsample_mask</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_size</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
-
-    <span class="n">A_train</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-    <span class="n">A_test</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-    <span class="n">A_train</span><span class="p">[</span><span class="n">subsample_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">subsample_mask</span><span class="p">]</span>
-    <span class="n">A_test</span><span class="p">[</span><span class="o">~</span><span class="n">subsample_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="o">~</span><span class="n">subsample_mask</span><span class="p">]</span>
-
-    <span class="k">return</span> <span class="n">A_train</span><span class="p">,</span> <span class="n">A_test</span>
-
-
-<span class="k">def</span> <span class="nf">count_split</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">rng</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">()</span>
-    <span class="n">A_train</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span> <span class="n">train_size</span><span class="p">)</span>
-    <span class="n">A_test</span> <span class="o">=</span> <span class="n">A</span> <span class="o">-</span> <span class="n">A_train</span>
-
-    <span class="k">return</span> <span class="n">A_train</span><span class="p">,</span> <span class="n">A_test</span>
+def estimate_partition_spectral_modularity(A):
+    A_sym = (A + A.T) / 2
+    degrees = A_sym.sum(axis=0)
+    m = degrees.sum()  # TODO half here?
+    B = A_sym - 1 / m * degrees[:, None] * degrees[None, :]
+    _, eigenvectors = np.linalg.eigh(B)
+    # eigh returns eigenvectors in ascending order by eigenvalue
+    first_eigenvector = np.squeeze(np.asarray(eigenvectors[:, -1]))
+    eig_partition = first_eigenvector.copy()
+    eig_partition[eig_partition &gt; 0] = 1
+    eig_partition[eig_partition &lt;= 0] = 0
+    eig_partition = eig_partition.astype(int)
+    return eig_partition
 
 
-<span class="k">def</span> <span class="nf">estimate_block_probabilities</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
-    <span class="n">sbm</span> <span class="o">=</span> <span class="n">SBMEstimator</span><span class="p">(</span><span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">loops</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">sbm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
-    <span class="n">B</span> <span class="o">=</span> <span class="n">sbm</span><span class="o">.</span><span class="n">block_p_</span>
-    <span class="k">return</span> <span class="n">B</span>
+def old_count_split(A, train_size=0.5, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+
+    subsample_mask = rng.binomial(1, train_size, size=(n, n)).astype(bool)
+
+    A_train = np.zeros_like(A)
+    A_test = np.zeros_like(A)
+    A_train[subsample_mask] = A[subsample_mask]
+    A_test[~subsample_mask] = A[~subsample_mask]
+
+    return A_train, A_test
+
+
+def count_split(A, train_size=0.5, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+    A_train = rng.binomial(A.astype(int), train_size)
+    A_test = A - A_train
+
+    return A_train, A_test
+
+
+def estimate_block_probabilities(A, labels):
+    sbm = SBMEstimator(directed=True, loops=True)
+    sbm.fit(A, labels)
+    B = sbm.block_p_
+    return B
 </pre></div>
 </div>
 </div>
 </div>
 <div class="cell tag_hide-input docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="mf">0.3</span>
-<span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+p = 0.3
+n = 100
 
-<span class="n">n_sims</span> <span class="o">=</span> <span class="mi">1000</span>
-<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">B_tests</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">B_trains</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">n_sims</span><span class="p">)):</span>
-    <span class="n">A</span> <span class="o">=</span> <span class="n">er_np</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">loops</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+n_sims = 1000
+rows = []
+B_tests = []
+B_trains = []
+for i in tqdm(range(n_sims)):
+    A = er_np(n, p, directed=True, loops=True).astype(int)
 
-    <span class="n">A_train</span><span class="p">,</span> <span class="n">A_test</span> <span class="o">=</span> <span class="n">count_split</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+    A_train, A_test = count_split(A)
 
-    <span class="c1"># pred_labels = estimate_partition_gmm(A_train)</span>
-    <span class="n">pred_labels</span> <span class="o">=</span> <span class="n">estimate_partition_spectral_modularity</span><span class="p">(</span><span class="n">A_train</span><span class="p">)</span>
+    # pred_labels = estimate_partition_gmm(A_train)
+    pred_labels = estimate_partition_spectral_modularity(A_train)
 
-    <span class="n">B_trains</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">estimate_block_probabilities</span><span class="p">(</span><span class="n">A_train</span><span class="p">,</span> <span class="n">pred_labels</span><span class="p">))</span>
-    <span class="n">B_tests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">estimate_block_probabilities</span><span class="p">(</span><span class="n">A_test</span><span class="p">,</span> <span class="n">pred_labels</span><span class="p">))</span>
+    B_trains.append(estimate_block_probabilities(A_train, pred_labels))
+    B_tests.append(estimate_block_probabilities(A_test, pred_labels))
 
-    <span class="k">for</span> <span class="n">graph</span><span class="p">,</span> <span class="n">data_name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="n">A_train</span><span class="p">,</span> <span class="n">A_test</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">]):</span>
+    for graph, data_name in zip([A_train, A_test], [&quot;train&quot;, &quot;test&quot;]):
 
-        <span class="n">subgraphs</span> <span class="o">=</span> <span class="n">get_subgraphs</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pred_labels</span><span class="p">)</span>
+        subgraphs = get_subgraphs(graph, pred_labels)
 
-        <span class="c1"># this just makes the 4 x 2 table (subgraph x edge/no edge) for the chi2 test</span>
-        <span class="n">table</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">compute_params</span><span class="p">(</span><span class="n">subgraph</span><span class="p">)</span> <span class="k">for</span> <span class="n">subgraph</span> <span class="ow">in</span> <span class="n">subgraphs</span><span class="p">])</span>
+        # this just makes the 4 x 2 table (subgraph x edge/no edge) for the chi2 test
+        table = np.array([compute_params(subgraph) for subgraph in subgraphs])
 
-        <span class="n">stat</span><span class="p">,</span> <span class="n">pvalue</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">expected</span> <span class="o">=</span> <span class="n">chi2_contingency</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+        stat, pvalue, _, expected = chi2_contingency(table)
 
-        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;pvalue&quot;</span><span class="p">:</span> <span class="n">pvalue</span><span class="p">,</span>
-            <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">data_name</span><span class="p">,</span>
-        <span class="p">}</span>
-        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        result = {
+            &quot;pvalue&quot;: pvalue,
+            &quot;data&quot;: data_name,
+        }
+        rows.append(result)
 
-<span class="n">results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+results = pd.DataFrame(rows)
 
-<span class="n">B_test_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">B_tests</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">B_train_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">B_trains</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+B_test_mean = np.mean(B_tests, axis=0)
+B_train_mean = np.mean(B_trains, axis=0)
 </pre></div>
 </div>
 </div>
@@ -542,17 +544,17 @@ title="Print to PDF"
 <h1>What does the average <span class="math notranslate nohighlight">\(\hat{B}\)</span> matrix look like?<a class="headerlink" href="#what-does-the-average-hat-b-matrix-look-like" title="Permalink to this headline">#</a></h1>
 <div class="cell tag_hide-input docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
-<span class="n">heatmap_kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">square</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+heatmap_kws = dict(square=True, cbar=False, cmap=&quot;RdBu_r&quot;, vmin=0, vmax=0.2, annot=True)
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">B_train_mean</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\hat</span><span class="si">{B}</span><span class="s2">$ from train network&quot;</span><span class="p">)</span>
+ax = axs[0]
+sns.heatmap(B_train_mean, ax=ax, **heatmap_kws)
+ax.set_title(r&quot;$\hat{B}$ from train network&quot;)
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">B_test_mean</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\hat</span><span class="si">{B}</span><span class="s2">$ from test network&quot;</span><span class="p">)</span>
+ax = axs[1]
+sns.heatmap(B_test_mean, ax=ax, **heatmap_kws)
+ax.set_title(r&quot;$\hat{B}$ from test network&quot;)
 </pre></div>
 </div>
 </div>
@@ -568,46 +570,48 @@ title="Print to PDF"
 <h1>Are the p-values sub-uniform?<a class="headerlink" href="#are-the-p-values-sub-uniform" title="Permalink to this headline">#</a></h1>
 <div class="cell tag_hide-input docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">subuniformity_plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">write_pvalue</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
-    <span class="n">sns</span><span class="o">.</span><span class="n">histplot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">stat</span><span class="o">=</span><span class="s2">&quot;density&quot;</span><span class="p">,</span> <span class="n">cumulative</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-    <span class="n">stat</span><span class="p">,</span> <span class="n">pvalue</span> <span class="o">=</span> <span class="n">ks_1samp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">cdf</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;greater&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">write_pvalue</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Subuniformity</span><span class="se">\n</span><span class="s2">p-value: </span><span class="si">{</span><span class="n">pvalue</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Cumulative density&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-        <span class="mf">0.11</span><span class="p">,</span>
-        <span class="mf">0.09</span><span class="p">,</span>
-        <span class="s2">&quot;Uniform(0,1) RV&quot;</span><span class="p">,</span>
-        <span class="n">rotation</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
-        <span class="n">va</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
-        <span class="n">rotation_mode</span><span class="o">=</span><span class="s2">&quot;anchor&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">ax</span><span class="p">,</span> <span class="n">stat</span><span class="p">,</span> <span class="n">pvalue</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+
+def subuniformity_plot(x, ax=None, write_pvalue=True, **kwargs):
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(6, 6))
+    sns.histplot(x, ax=ax, stat=&quot;density&quot;, cumulative=True, **kwargs)
+    stat, pvalue = ks_1samp(x, uniform(0, 1).cdf, alternative=&quot;greater&quot;)
+    if write_pvalue:
+        ax.text(0, 1, f&quot;Subuniformity\np-value: {pvalue:.3f}&quot;, va=&quot;top&quot;)
+    ax.plot([0, 1], [0, 1], linewidth=3, linestyle=&quot;:&quot;, color=&quot;black&quot;)
+    ax.set_ylabel(&quot;Cumulative density&quot;)
+    ax.text(
+        0.11,
+        0.09,
+        &quot;Uniform(0,1) RV&quot;,
+        rotation=48,
+        va=&quot;top&quot;,
+        ha=&quot;left&quot;,
+        rotation_mode=&quot;anchor&quot;,
+    )
+    return ax, stat, pvalue
 
 
-<span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
-<span class="n">subuniformity_plot</span><span class="p">(</span>
-    <span class="n">x</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;data == &#39;train&#39;&quot;</span><span class="p">)[</span><span class="s2">&quot;pvalue&quot;</span><span class="p">],</span>
-    <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-    <span class="n">binwidth</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
-    <span class="n">binrange</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">element</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Train network&quot;</span><span class="p">)</span>
+subuniformity_plot(
+    x=results.query(&quot;data == &#39;train&#39;&quot;)[&quot;pvalue&quot;],
+    ax=axs[0],
+    binwidth=0.01,
+    binrange=(0, 1),
+    element=&quot;step&quot;,
+)
+axs[0].set_title(&quot;Train network&quot;)
 
-<span class="n">subuniformity_plot</span><span class="p">(</span>
-    <span class="n">x</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;data == &#39;test&#39;&quot;</span><span class="p">)[</span><span class="s2">&quot;pvalue&quot;</span><span class="p">],</span>
-    <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-    <span class="n">binwidth</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
-    <span class="n">binrange</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">element</span><span class="o">=</span><span class="s2">&quot;step&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Test network&quot;</span><span class="p">)</span>
+subuniformity_plot(
+    x=results.query(&quot;data == &#39;test&#39;&quot;)[&quot;pvalue&quot;],
+    ax=axs[1],
+    binwidth=0.01,
+    binrange=(0, 1),
+    element=&quot;step&quot;,
+)
+axs[1].set_title(&quot;Test network&quot;)
 </pre></div>
 </div>
 </div>
@@ -623,63 +627,63 @@ title="Print to PDF"
 <h1>Just trying to draw what is going on, not essential to simulation<a class="headerlink" href="#just-trying-to-draw-what-is-going-on-not-essential-to-simulation" title="Permalink to this headline">#</a></h1>
 <div class="cell tag_hide-input docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">giskard.plot</span> <span class="kn">import</span> <span class="n">merge_axes</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from giskard.plot import merge_axes
 
 
-<span class="n">p</span> <span class="o">=</span> <span class="mf">0.3</span>
-<span class="n">n</span> <span class="o">=</span> <span class="mi">50</span>
-<span class="n">A</span> <span class="o">=</span> <span class="n">er_np</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">directed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">loops</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">subsample_mask</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
-<span class="n">A_train</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-<span class="n">A_test</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
-<span class="n">A_train</span><span class="p">[</span><span class="n">subsample_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="n">subsample_mask</span><span class="p">]</span>
-<span class="n">A_test</span><span class="p">[</span><span class="o">~</span><span class="n">subsample_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="p">[</span><span class="o">~</span><span class="n">subsample_mask</span><span class="p">]</span>
-<span class="n">n_rows</span> <span class="o">=</span> <span class="mi">2</span>
-<span class="n">n_cols</span> <span class="o">=</span> <span class="mi">4</span>
-<span class="n">size</span> <span class="o">=</span> <span class="mi">4</span>
+p = 0.3
+n = 50
+A = er_np(n, p, directed=True, loops=True)
+subsample_mask = rng.binomial(1, 0.5, size=(n, n)).astype(bool)
+A_train = np.zeros_like(A)
+A_test = np.zeros_like(A)
+A_train[subsample_mask] = A[subsample_mask]
+A_test[~subsample_mask] = A[~subsample_mask]
+n_rows = 2
+n_cols = 4
+size = 4
 
-<span class="n">heatmap_kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">title_pad</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
-    <span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">n_cols</span> <span class="o">*</span> <span class="n">size</span><span class="p">,</span> <span class="n">n_rows</span> <span class="o">*</span> <span class="n">size</span><span class="p">),</span> <span class="n">constrained_layout</span><span class="o">=</span><span class="kc">True</span>
-<span class="p">)</span>
-<span class="n">ax</span> <span class="o">=</span> <span class="n">merge_axes</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span><span class="p">,</span> <span class="n">cols</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">heatmap</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">)</span>
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-<span class="n">heatmap</span><span class="p">(</span><span class="n">subsample_mask</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Train mask&quot;</span><span class="p">)</span>
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
-<span class="n">heatmap</span><span class="p">(</span><span class="o">~</span><span class="n">subsample_mask</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Test mask&quot;</span><span class="p">)</span>
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">heatmap</span><span class="p">(</span><span class="n">A_test</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;A train&quot;</span><span class="p">)</span>
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
-<span class="n">heatmap</span><span class="p">(</span><span class="n">A_train</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;A test&quot;</span><span class="p">)</span>
+heatmap_kws = dict(cbar=False, title_pad=40)
+fig, axs = plt.subplots(
+    n_rows, n_cols, figsize=(n_cols * size, n_rows * size), constrained_layout=True
+)
+ax = merge_axes(fig, axs, cols=0)
+heatmap(A, ax=ax, **heatmap_kws)
+ax.set_title(&quot;A&quot;)
+ax = axs[0, 1]
+heatmap(subsample_mask, ax=ax, **heatmap_kws)
+ax.set_title(&quot;Train mask&quot;)
+ax = axs[1, 1]
+heatmap(~subsample_mask, ax=ax, **heatmap_kws)
+ax.set_title(&quot;Test mask&quot;)
+ax = axs[0, 2]
+heatmap(A_test, ax=ax, **heatmap_kws)
+ax.set_title(&quot;A train&quot;)
+ax = axs[1, 2]
+heatmap(A_train, ax=ax, **heatmap_kws)
+ax.set_title(&quot;A test&quot;)
 
 
-<span class="c1"># pred_labels = estimate_partition_gmm(A_train)</span>
-<span class="n">pred_labels</span> <span class="o">=</span> <span class="n">estimate_partition_spectral_modularity</span><span class="p">(</span><span class="n">A_train</span><span class="p">)</span>
+# pred_labels = estimate_partition_gmm(A_train)
+pred_labels = estimate_partition_spectral_modularity(A_train)
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+ax = axs[0, 3]
 
-<span class="n">heatmap</span><span class="p">(</span>
-    <span class="n">A_train</span><span class="p">,</span>
-    <span class="n">inner_hier_labels</span><span class="o">=</span><span class="n">pred_labels</span><span class="p">,</span>
-    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;A train paritioned&quot;</span><span class="p">,</span>
-    <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">,</span>
-<span class="p">)</span>
+heatmap(
+    A_train,
+    inner_hier_labels=pred_labels,
+    ax=ax,
+    title=&quot;A train paritioned&quot;,
+    **heatmap_kws,
+)
 
-<span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
-<span class="n">heatmap</span><span class="p">(</span>
-    <span class="n">A_test</span><span class="p">,</span>
-    <span class="n">inner_hier_labels</span><span class="o">=</span><span class="n">pred_labels</span><span class="p">,</span>
-    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;A test partitioned&quot;</span><span class="p">,</span>
-    <span class="o">**</span><span class="n">heatmap_kws</span><span class="p">,</span>
-<span class="p">)</span>
+ax = axs[1, 3]
+heatmap(
+    A_test,
+    inner_hier_labels=pred_labels,
+    ax=ax,
+    title=&quot;A test partitioned&quot;,
+    **heatmap_kws,
+)
 </pre></div>
 </div>
 </div>
