@@ -3,6 +3,7 @@ root: abstract
 parts:
   - caption: Notebooks
     chapters: 
+    - file: sbm_not_homophilic
     - file: er_splitting_significance
   - caption: Slides
     chapters:
